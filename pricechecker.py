@@ -1,9 +1,10 @@
-import requests
-import json
-import yaml
-import smtplib
 import configparser
+import json
+import smtplib
 from email.mime.text import MIMEText
+
+import requests
+import yaml
 
 config = configparser.ConfigParser()
 config.read("config.ini")
