@@ -1,3 +1,6 @@
+import os
+import pickle
+
 import schedule
 import yaml
 from nicegui import ui
@@ -27,6 +30,8 @@ def index():
                     icon="settings", on_click=lambda: ui.navigate.to("/config")
                 ).props("flat dense")
         make_cards("")
+        if os.path.exists("specials.pkl"):
+            current_specials()
 
 
 @ui.page("/config")
@@ -66,6 +71,8 @@ def add_product(wid: int):
             yaml.safe_dump(products, f)
 
         ui.notify("Product added!", type="positive", position="top")
+        check_specials()
+        current_specials.refresh()
     else:
         ui.notify("Product already tracked!", type="negative", position="top")
 
@@ -93,6 +100,32 @@ def make_cards(query):
                 text="Add Product",
                 on_click=lambda: add_product(p.woolies.id),
             )
+
+
+@ui.refreshable
+def current_specials():
+    with open("specials.pkl", "rb") as f:
+        specials = pickle.load(f)
+
+    if specials["woolies"]:
+        ui.label("Woolies Specials This Week:")
+        make_specials_table(specials["woolies"])
+
+    if specials["coles"]:
+        ui.label("Coles Specials This Week:")
+        make_specials_table(specials["coles"])
+
+
+def make_specials_table(specials):
+    columns = [
+        {"name": "product", "label": "Product", "field": "product", "align": "left"},
+        {"name": "price", "label": "Price", "field": "price", "align": "left"},
+    ]
+    rows = [{"product": x[0], "price": x[1]} for x in specials]
+
+    ui.table(columns=columns, rows=rows, row_key="name").props("dense").classes(
+        "w-1/5 min-w-[400px]"
+    )
 
 
 schedule.every().tuesday.at("23:00").do(check_specials)

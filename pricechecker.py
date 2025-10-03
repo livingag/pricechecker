@@ -1,5 +1,6 @@
 import configparser
 import json
+import pickle
 import re
 import smtplib
 from email.mime.text import MIMEText
@@ -129,9 +130,11 @@ def check_specials():
         if product["IsOnSpecial"]:
             saving = (product["SavingsAmount"] / product["WasPrice"]) * 100
             woolies_specials.append(
-                f"{product['DisplayName']}: ${product['Price']:.2f} ({saving:.0f}% off)\n"
+                (
+                    f"{product['DisplayName']}",
+                    f"${product['Price']:.2f} ({saving:.0f}% off)",
+                )
             )
-    woolies_specials = "".join(sorted(woolies_specials))
 
     products = get_coles_products(coles_ids)
     coles_specials = []
@@ -141,18 +144,10 @@ def check_specials():
             name = f"{product['brand']} {product['name']} {product['size']}"
             saving = (pricing["saveAmount"] / pricing["was"]) * 100
             coles_specials.append(
-                f"{name}: ${pricing['now']:.2f} ({saving:.0f}% off)\n"
+                (f"{name}", f"${pricing['now']:.2f} ({saving:.0f}% off)")
             )
-    coles_specials = "".join(sorted(coles_specials))
 
-    if len(woolies_specials + coles_specials) > 0:
-        message_body = "Specials this week:\n\n"
-        message_body += "Woolies:\n" + woolies_specials + "\n"
-        message_body += "Coles:\n" + coles_specials
-    else:
-        message_body = "No specials this week :("
+    specials = {"woolies": woolies_specials, "coles": coles_specials}
 
-    subject = "Supermarket Specials This Week"
-    body = message_body
-
-    send_email(subject, body, GMAIL_ADDRESS, [GMAIL_ADDRESS], GMAIL_PASSWORD)
+    with open("specials.pkl", "wb") as f:
+        pickle.dump(specials, f)
