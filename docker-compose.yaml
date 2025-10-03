@@ -1,0 +1,8 @@
+services:
+    pricechecker:
+        image: pricechecker:latest
+        restart: always
+        ports:
+            - 8888:8888
+        volumes:
+            - ./:/app/
