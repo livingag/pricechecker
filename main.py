@@ -131,4 +131,6 @@ def make_specials_table(specials):
 schedule.every().tuesday.at("23:00").do(check_specials)
 ui.timer(0.1, schedule.run_pending)
 
+check_specials()
+
 ui.run(port=8888, title="Price Checker", favicon="🍎")
