@@ -1,4 +1,3 @@
-import configparser
 import json
 import pickle
 import re
@@ -8,15 +7,11 @@ from email.mime.text import MIMEText
 import requests
 import yaml
 
-config = configparser.ConfigParser()
-config.read("config.ini")
 
 HEADERS = {
     "Content-Type": "application/json",
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
 }
-GMAIL_ADDRESS = config.get("Gmail", "address")
-GMAIL_PASSWORD = config.get("Gmail", "password")
 
 COLES_API = ""
 
