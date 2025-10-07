@@ -2,6 +2,7 @@ import json
 import pickle
 import re
 import smtplib
+from urllib.parse import quote
 from email.mime.text import MIMEText
 
 import requests
@@ -60,14 +61,15 @@ class ColesProduct(Product):
 
 def search_woolies(query: str) -> list:
     url = "https://www.woolworths.com.au/apis/ui/Search/products"
-    r = requests.get(url + f"?searchTerm={query}", headers=HEADERS)
-    return [x["Products"][0] for x in json.loads(r.content)["Products"]]
+    r = requests.get(url + f"?searchTerm={quote(query)}", headers=HEADERS)
+    p = [x["Products"][0] for x in json.loads(r.content)["Products"]]
+    return [x for x in p if not x["IsMarketProduct"]]
 
 
 def search_coles(query: str) -> list:
     global COLES_API
     url = f"https://www.coles.com.au/_next/data/{COLES_API}/en/search/products.json"
-    r = requests.get(url + f"?q={query}", headers=HEADERS)
+    r = requests.get(url + f"?q={quote(query)}", headers=HEADERS)
 
     try:
         results = json.loads(r.content)["pageProps"]["searchResults"]["results"]
