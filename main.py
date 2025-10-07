@@ -21,6 +21,12 @@ def set_style(page):
             .q-field__inner {
                 background-color: white;    
             }
+            .q-tab-panels {
+                background-color: #f0f0f0;
+            }
+            .q-tab {
+                text-transform: none;
+            }
         </style>
         """)
         page()
@@ -83,7 +89,7 @@ def index():
                     icon="add",
                     text="Add Product",
                     on_click=partial(add_product, str(p.woolies.id)),
-                )
+                ).props("color=green")
 
     def handle_key(e):
         if e.key == "Enter" and e.action.keydown:
@@ -142,13 +148,14 @@ def current_specials():
         specials = pickle.load(f)
 
     with ui.column().classes("items-center") as column:
-        if specials["woolies"]:
-            ui.label("Woolies Specials This Week:")
-            make_specials_table(specials["woolies"])
-
-        if specials["coles"]:
-            ui.label("Coles Specials This Week:")
-            make_specials_table(specials["coles"])
+        with ui.tabs().props("dense") as tabs:
+            one = ui.tab("🍏 Woolies").classes("text-[#178841]")
+            two = ui.tab("🍎 Coles").classes("text-[#e01a22]")
+        with ui.tab_panels(tabs, value=one):
+            with ui.tab_panel(one):
+                make_specials_table(specials["woolies"])
+            with ui.tab_panel(two):
+                make_specials_table(specials["coles"])
 
     return column
 
