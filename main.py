@@ -31,9 +31,36 @@ def set_style(page):
 @ui.page("/")
 @set_style
 def index():
+    def reset_view():
+        make_cards.refresh("")
+        specials_column.set_visibility(True)
+        search.value = ""
+
+    async def add_product(wid: int):
+        p = Product(wid)
+
+        with open("products.yaml", "r") as f:
+            products = yaml.safe_load(f.read())
+
+        if p.name not in products.keys():
+            ui.notify("Product added!", type="positive", position="top")
+            reset_view()
+
+            products[p.name] = {"woolies": p.woolies.id, "coles": p.coles.id}
+
+            with open("products.yaml", "w") as f:
+                yaml.safe_dump(products, f)
+
+            await run.cpu_bound(check_specials)
+            current_specials.refresh()
+        else:
+            ui.notify("Product already tracked!", type="negative", position="top")
+            reset_view()
+
     @ui.refreshable
     def make_cards(query):
         if query:
+            specials_column.set_visibility(False)
             ui.run_javascript("document.activeElement.blur();")
             p = Product(query)
             with ui.row().classes("w-full justify-center min-w-[350px]"):
@@ -64,7 +91,7 @@ def index():
 
     def clear_cards(e):
         if e is None or e == "":
-            make_cards.refresh("")
+            reset_view()
 
     ui.keyboard(on_key=handle_key, ignore=[])
 
@@ -83,7 +110,7 @@ def index():
                 ).props("flat dense")
         make_cards("")
         if os.path.exists("specials.pkl"):
-            current_specials()
+            specials_column = current_specials()
 
 
 @ui.page("/config")
@@ -109,37 +136,21 @@ def config():
             )
 
 
-async def add_product(wid: int):
-    p = Product(wid)
-
-    with open("products.yaml", "r") as f:
-        products = yaml.safe_load(f.read())
-
-    if p.name not in products.keys():
-        products[p.name] = {"woolies": p.woolies.id, "coles": p.coles.id}
-
-        with open("products.yaml", "w") as f:
-            yaml.safe_dump(products, f)
-
-        ui.notify("Product added!", type="positive", position="top")
-        await run.cpu_bound(check_specials)
-        current_specials.refresh()
-    else:
-        ui.notify("Product already tracked!", type="negative", position="top")
-
-
 @ui.refreshable
 def current_specials():
     with open("specials.pkl", "rb") as f:
         specials = pickle.load(f)
 
-    if specials["woolies"]:
-        ui.label("Woolies Specials This Week:")
-        make_specials_table(specials["woolies"])
+    with ui.column().classes("items-center") as column:
+        if specials["woolies"]:
+            ui.label("Woolies Specials This Week:")
+            make_specials_table(specials["woolies"])
 
-    if specials["coles"]:
-        ui.label("Coles Specials This Week:")
-        make_specials_table(specials["coles"])
+        if specials["coles"]:
+            ui.label("Coles Specials This Week:")
+            make_specials_table(specials["coles"])
+
+    return column
 
 
 def make_specials_table(specials):
@@ -170,8 +181,8 @@ async def update_specials():
     current_specials.refresh()
 
 
-schedule.every().tuesday.at("23:00").do(update_specials)
-ui.timer(0.1, schedule.run_pending)
+schedule.every().tuesday.at("18:00").do(update_specials)
+ui.timer(60, schedule.run_pending)
 
 
 for suffix in ["", "-precomposed", "-120x120-precomposed", "-120x120"]:
