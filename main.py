@@ -62,13 +62,17 @@ def index():
         if e.key == "Enter" and e.action.keydown:
             make_cards.refresh(search.value)
 
+    def clear_cards(e):
+        if e is None or e == "":
+            make_cards.refresh("")
+
     ui.keyboard(on_key=handle_key, ignore=[])
 
     with ui.column().classes("w-full items-center"):
         with ui.row().classes("w-full justify-center"):
             with (
-                ui.input()
-                .props("outlined dense input-style='font-size: 16px;'")
+                ui.input(on_change=lambda e: clear_cards(e.value))
+                .props("outlined dense input-style='font-size: 16px;' clearable")
                 .classes("w-screen max-w-[600px]") as search
             ):
                 ui.button(
