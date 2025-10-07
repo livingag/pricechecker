@@ -169,18 +169,12 @@ async def update_specials():
 schedule.every().tuesday.at("23:00").do(update_specials)
 ui.timer(0.1, schedule.run_pending)
 
-app.add_static_file(local_file="apple-touch-icon.png", url_path="/apple-touch-icon.png")
-app.add_static_file(
-    local_file="apple-touch-icon.png", url_path="/apple-touch-icon-precomposed.png"
-)
-app.add_static_file(
-    local_file="apple-touch-icon.png",
-    url_path="/apple-touch-icon-120x120-precomposed.png",
-)
-app.add_static_file(
-    local_file="apple-touch-icon.png", url_path="/apple-touch-icon-120x120.png"
-)
 
-check_specials()
+for suffix in ["", "-precomposed", "-120x120-precomposed", "-120x120"]:
+    app.add_static_file(
+        local_file="logo.png", url_path=f"/apple-touch-icon{suffix}.png"
+    )
+
+app.on_startup(update_specials)
 
 ui.run(port=8888, title="Price Checker", favicon="🍎")
