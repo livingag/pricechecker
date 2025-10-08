@@ -129,7 +129,8 @@ def check_specials():
             woolies_specials.append(
                 (
                     f"{product['DisplayName']}",
-                    f"${product['Price']:.2f} ({saving:.0f}% off)",
+                    f"${product['Price']:.2f}",
+                    f"{saving:.0f}%",
                 )
             )
 
@@ -141,7 +142,7 @@ def check_specials():
             name = f"{product['brand']} {product['name']} {product['size']}"
             saving = (pricing["saveAmount"] / pricing["was"]) * 100
             coles_specials.append(
-                (f"{name}", f"${pricing['now']:.2f} ({saving:.0f}% off)")
+                (f"{name}", f"${pricing['now']:.2f}", f"{saving:.0f}%")
             )
 
     specials = {"woolies": woolies_specials, "coles": coles_specials}

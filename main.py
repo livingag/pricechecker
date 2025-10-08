@@ -1,5 +1,6 @@
 import os
 import pickle
+import re
 from functools import partial
 
 import schedule
@@ -12,12 +13,14 @@ from pricechecker import Product, check_specials
 def set_style(page):
     def wrap():
         ui.colors(primary="#5F5F5F")
-        ui.query("body").style("background-color: #f0f0f0")
         ui.add_head_html("""
         <meta name="theme-color" content="#f0f0f0">
         """)
         ui.add_body_html("""
         <style>
+            body {
+                background-color: #f0f0f0;
+            }
             .q-field__inner {
                 background-color: white;    
             }
@@ -173,10 +176,24 @@ def make_specials_table(specials):
             "label": "Price",
             "field": "price",
             "align": "left",
-            "style": "width: 120px",
+            "style": "width: 50px",
+        },
+        {
+            "name": "discount",
+            "label": "Save",
+            "field": "discount",
+            "align": "left",
+            "style": "width: 50px",
         },
     ]
-    rows = [{"product": x[0], "price": x[1]} for x in specials]
+    rows = [
+        {
+            "product": re.sub(r"(?i) \d{1,}(?:ml|g|l|kg)", "", x[0]),
+            "price": x[1],
+            "discount": x[2],
+        }
+        for x in specials
+    ]
 
     ui.table(columns=columns, rows=rows, row_key="name").props("dense").classes(
         "w-[90vw] max-w-[600px]"
