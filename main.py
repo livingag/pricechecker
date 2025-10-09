@@ -214,6 +214,9 @@ for suffix in ["", "-precomposed", "-120x120-precomposed", "-120x120"]:
         local_file="logo.png", url_path=f"/apple-touch-icon{suffix}.png"
     )
 
+if not os.path.exists("products.yaml"):
+    open("products.yaml", "w+")
+
 app.on_startup(update_specials)
 
 ui.run(port=8888, title="Price Checker", favicon="🍎")
