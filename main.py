@@ -125,24 +125,33 @@ def index():
 @ui.page("/config")
 @set_style
 def config():
-    def save_yaml(str):
+    async def remove_product(name: str):
+        del products[name]
         with open("products.yaml", "w") as f:
-            f.write(str)
+            yaml.safe_dump(products, f)
+
+        ui.navigate.to("/config")
+        await run.cpu_bound(check_specials)
 
     with open("products.yaml", "r") as f:
-        text = f.read()
+        products = yaml.safe_load(f)
 
-    with ui.column().classes("w-full h-dvh items-center"):
-        code = ui.codemirror(text, language="YAML", theme="monokai").classes(
-            "h-[75vh] w-[90vw] max-w-[800px]"
-        )
-        with ui.row().classes("justify-end w-[90vw] max-w-[800px]"):
-            ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props(
-                "flat dense"
-            )
-            ui.button(icon="save", on_click=lambda: save_yaml(code.value)).props(
-                "flat dense"
-            )
+    with ui.column().classes("w-full items-center"):
+        with ui.card():
+            with (
+                ui.grid(columns="auto auto")
+                .classes("items-center")
+                .style("gap: 0.5rem")
+            ):
+                ui.markdown("**Product**")
+                ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props(
+                    "flat dense"
+                )
+                for product in products:
+                    ui.label(product).classes("pr-4")
+                    ui.button("❌", on_click=partial(remove_product, product)).props(
+                        "flat dense"
+                    )
 
 
 @ui.refreshable
