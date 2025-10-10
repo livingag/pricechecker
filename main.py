@@ -35,6 +35,9 @@ def index():
         with open("products.yaml", "r") as f:
             products = yaml.safe_load(f.read())
 
+        if not products:
+            products = {}
+
         if p.name not in products.keys():
             ui.notify("Product added!", type="positive", position="top")
             reset_view()
@@ -109,12 +112,9 @@ def index():
                 ui.button(
                     icon="search", on_click=lambda: make_cards.refresh(search.value)
                 ).props("flat dense")
-                ui.button(
-                    icon="settings", on_click=lambda: ui.navigate.to("/config")
-                ).props("flat dense")
+                ui.button(icon="settings", on_click=lambda: ui.navigate.to("/config")).props("flat dense")
         make_cards("")
-        if os.path.exists("specials.pkl"):
-            specials_column = current_specials()
+        specials_column = current_specials()
 
 
 @ui.page("/config")
@@ -155,6 +155,10 @@ def get_specials():
         products = yaml.safe_load(f.read())
 
     specials = {"woolies": [], "coles": []}
+
+    if not products:
+        return None
+
     for name, product in products.items():
         for market in ["woolies", "coles"]:
             if product[market]["on_special"]:
@@ -163,7 +167,7 @@ def get_specials():
                         name,
                         f"${product[market]['price']:.2f}",
                         f"{product[market]['saving']:.0f}%",
-                        product[market]["id"]
+                        product[market]["id"],
                     )
                 )
 
@@ -175,14 +179,15 @@ def current_specials():
     specials = get_specials()
 
     with ui.column().classes("items-center") as column:
-        with ui.tabs().props("dense") as tabs:
-            one = ui.tab("🍏 Woolies").classes("text-[#178841]")
-            two = ui.tab("🍎 Coles").classes("text-[#e01a22]")
-        with ui.tab_panels(tabs, value=one):
-            with ui.tab_panel(one):
-                make_specials_grid(specials, "woolies")
-            with ui.tab_panel(two):
-                make_specials_grid(specials, "coles")
+        if specials:
+            with ui.tabs().props("dense") as tabs:
+                one = ui.tab("🍏 Woolies").classes("text-[#178841]")
+                two = ui.tab("🍎 Coles").classes("text-[#e01a22]")
+            with ui.tab_panels(tabs, value=one):
+                with ui.tab_panel(one):
+                    make_specials_grid(specials, "woolies")
+                with ui.tab_panel(two):
+                    make_specials_grid(specials, "coles")
 
     return column
 
@@ -194,27 +199,30 @@ def make_specials_grid(specials: dict, supermarket: str):
         .tight()
         .classes("p-2 w-[90vw] max-w-[600px]")
     ):
-        with (
-            ui.grid(columns="auto 50px 40px")
-            .classes("items-center gap-0 w-full")
-            .style("row-gap: 0.4rem")
-        ):
-            ui.label("Product").classes("border-b")
-            ui.label("Price").classes("border-b")
-            ui.label("Save").classes("border-b")
+        if specials[supermarket]:
+            with (
+                ui.grid(columns="auto 50px 40px")
+                .classes("items-center gap-0 w-full")
+                .style("row-gap: 0.4rem")
+            ):
+                ui.label("Product").classes("border-b")
+                ui.label("Price").classes("border-b")
+                ui.label("Save").classes("border-b")
 
-            for p in specials[supermarket]:
-                ui.label(re.sub(r"(?i) \d{1,}(?:ml|g|l|kg)", "", p[0])).classes(
-                    "pr-4"
-                ).on("click", lambda p=p: product_image_dialog(p[3], supermarket))
-                ui.label(p[1]).on(
-                    "click", lambda p=p: price_chart_dialog(p[0], supermarket)
-                )
-                ui.label(p[2])
+                for p in specials[supermarket]:
+                    ui.label(re.sub(r"(?i) \d{1,}(?:ml|g|l|kg)", "", p[0])).classes(
+                        "pr-4"
+                    ).on("click", lambda p=p: product_image_dialog(p[3], supermarket))
+                    ui.label(p[1]).on(
+                        "click", lambda p=p: price_chart_dialog(p[0], supermarket)
+                    )
+                    ui.label(p[2])
+        else:
+            ui.label("No specials this week!")
 
 
 def product_image_dialog(name, market):
-    product = Product(str(name), market=="coles")
+    product = Product(str(name), market == "coles")
     with ui.dialog() as dialog:
         ui.image(getattr(product, market).image)
 

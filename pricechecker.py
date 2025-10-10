@@ -148,6 +148,9 @@ def check_specials():
 
     with open("products.yaml", "r") as f:
         data = yaml.safe_load(f.read())
+    
+    if not data:
+        return
 
     today = str(datetime.now().date())
 
