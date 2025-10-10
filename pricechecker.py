@@ -18,17 +18,23 @@ COLES_API = ""
 
 
 class Product:
-    def __init__(self, name: str):
-        self.name = name
-        self.get_woolies()
+    def __init__(self, query: str, coles_id=False):
+        if coles_id:
+            self.get_coles_by_id(query)
+        else:
+            self.name = query
+            self.get_woolies()
+            self.get_coles()
 
     def get_woolies(self):
         self.woolies = WooliesProduct(search_woolies(self.name)[0])
         self.name = self.woolies.name
-        self.get_coles()
 
     def get_coles(self):
         self.coles = ColesProduct(search_coles(self.name)[0])
+    
+    def get_coles_by_id(self, coles_id):
+        self.coles = ColesProduct(get_coles_products([coles_id])[0])
 
 
 class WooliesProduct(Product):

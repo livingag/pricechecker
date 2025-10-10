@@ -163,6 +163,7 @@ def get_specials():
                         name,
                         f"${product[market]['price']:.2f}",
                         f"{product[market]['saving']:.0f}%",
+                        product[market]["id"]
                     )
                 )
 
@@ -205,7 +206,7 @@ def make_specials_grid(specials: dict, supermarket: str):
             for p in specials[supermarket]:
                 ui.label(re.sub(r"(?i) \d{1,}(?:ml|g|l|kg)", "", p[0])).classes(
                     "pr-4"
-                ).on("click", lambda p=p: product_image_dialog(p[0], supermarket))
+                ).on("click", lambda p=p: product_image_dialog(p[3], supermarket))
                 ui.label(p[1]).on(
                     "click", lambda p=p: price_chart_dialog(p[0], supermarket)
                 )
@@ -213,7 +214,7 @@ def make_specials_grid(specials: dict, supermarket: str):
 
 
 def product_image_dialog(name, market):
-    product = Product(str(name))
+    product = Product(str(name), market=="coles")
     with ui.dialog() as dialog:
         ui.image(getattr(product, market).image)
 
