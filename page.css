@@ -1,0 +1,19 @@
+body {
+    background-color: #f0f0f0;
+}
+.q-field__inner {
+    background-color: white;    
+}
+.q-tab-panels {
+    background-color: #f0f0f0;
+}
+.q-tab {
+    text-transform: none;
+}
+div .nicegui-grid:not(.font-bold) {
+    cursor: pointer;
+}
+.nicegui-grid .border-b {
+    font-weight: 500;
+    font-size: 12px;
+}

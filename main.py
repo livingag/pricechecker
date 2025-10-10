@@ -1,6 +1,6 @@
 import os
-import pickle
 import re
+from datetime import date
 from functools import partial
 
 import schedule
@@ -15,22 +15,6 @@ def set_style(page):
         ui.colors(primary="#5F5F5F")
         ui.add_head_html("""
         <meta name="theme-color" content="#f0f0f0">
-        """)
-        ui.add_body_html("""
-        <style>
-            body {
-                background-color: #f0f0f0;
-            }
-            .q-field__inner {
-                background-color: white;    
-            }
-            .q-tab-panels {
-                background-color: #f0f0f0;
-            }
-            .q-tab {
-                text-transform: none;
-            }
-        </style>
         """)
         page()
 
@@ -55,7 +39,18 @@ def index():
             ui.notify("Product added!", type="positive", position="top")
             reset_view()
 
-            products[p.name] = {"woolies": p.woolies.id, "coles": p.coles.id}
+            products[p.name] = {
+                "woolies": {
+                    "id": p.woolies.id,
+                    "max_save": p.woolies.saving,
+                    "price_history": [(str(date.today()), p.woolies.price)],
+                },
+                "coles": {
+                    "id": p.coles.id,
+                    "max_save": p.coles.saving,
+                    "price_history": [(str(date.today()), p.coles.price)],
+                },
+            }
 
             with open("products.yaml", "w") as f:
                 yaml.safe_dump(products, f)
@@ -132,6 +127,7 @@ def config():
 
         ui.navigate.to("/config")
         await run.cpu_bound(check_specials)
+        current_specials.refresh()
 
     with open("products.yaml", "r") as f:
         products = yaml.safe_load(f)
@@ -154,10 +150,28 @@ def config():
                     )
 
 
+def get_specials():
+    with open("products.yaml", "r") as f:
+        products = yaml.safe_load(f.read())
+
+    specials = {"woolies": [], "coles": []}
+    for name, product in products.items():
+        for market in ["woolies", "coles"]:
+            if product[market]["on_special"]:
+                specials[market].append(
+                    (
+                        name,
+                        f"${product[market]['price']:.2f}",
+                        f"{product[market]['saving']:.0f}%",
+                    )
+                )
+
+    return specials
+
+
 @ui.refreshable
 def current_specials():
-    with open("specials.pkl", "rb") as f:
-        specials = pickle.load(f)
+    specials = get_specials()
 
     with ui.column().classes("items-center") as column:
         with ui.tabs().props("dense") as tabs:
@@ -165,48 +179,79 @@ def current_specials():
             two = ui.tab("🍎 Coles").classes("text-[#e01a22]")
         with ui.tab_panels(tabs, value=one):
             with ui.tab_panel(one):
-                make_specials_table(specials["woolies"])
+                make_specials_grid(specials, "woolies")
             with ui.tab_panel(two):
-                make_specials_table(specials["coles"])
+                make_specials_grid(specials, "coles")
 
     return column
 
 
-def make_specials_table(specials):
-    columns = [
-        {
-            "name": "product",
-            "label": "Product",
-            "field": "product",
-            "align": "left",
-        },
-        {
-            "name": "price",
-            "label": "Price",
-            "field": "price",
-            "align": "left",
-            "style": "width: 50px",
-        },
-        {
-            "name": "discount",
-            "label": "Save",
-            "field": "discount",
-            "align": "left",
-            "style": "width: 50px",
-        },
-    ]
-    rows = [
-        {
-            "product": re.sub(r"(?i) \d{1,}(?:ml|g|l|kg)", "", x[0]),
-            "price": x[1],
-            "discount": x[2],
-        }
-        for x in specials
-    ]
+def make_specials_grid(specials: dict, supermarket: str):
+    with (
+        ui.card()
+        .style("font-size: 13px;")
+        .tight()
+        .classes("p-2 w-[90vw] max-w-[600px]")
+    ):
+        with (
+            ui.grid(columns="auto 50px 40px")
+            .classes("items-center gap-0 w-full")
+            .style("row-gap: 0.4rem")
+        ):
+            ui.label("Product").classes("border-b")
+            ui.label("Price").classes("border-b")
+            ui.label("Save").classes("border-b")
 
-    ui.table(columns=columns, rows=rows, row_key="name").props("dense").classes(
-        "w-[90vw] max-w-[600px]"
-    ).props("wrap-cells=true")
+            for p in specials[supermarket]:
+                ui.label(re.sub(r"(?i) \d{1,}(?:ml|g|l|kg)", "", p[0])).classes(
+                    "pr-4"
+                ).on("click", lambda p=p: product_image_dialog(p[0], supermarket))
+                ui.label(p[1]).on(
+                    "click", lambda p=p: price_chart_dialog(p[0], supermarket)
+                )
+                ui.label(p[2])
+
+
+def product_image_dialog(name, market):
+    product = Product(str(name))
+    with ui.dialog() as dialog:
+        ui.image(getattr(product, market).image)
+
+    dialog.open()
+
+
+def price_chart_dialog(name, market):
+    with open("products.yaml", "r") as f:
+        products = yaml.safe_load(f.read())
+    product = products[name]
+    price_history = product[market]["price_history"]
+
+    with ui.dialog() as dialog:
+        ui.echart(
+            {
+                "xAxis": {
+                    "type": "category",
+                    "splitLine": {"show": False},
+                    "axisLine": {"show": False},
+                    "axisTick": {"show": False},
+                    "axisLabel": {"show": False},
+                },
+                "yAxis": {"type": "value", "axisLabel": {"formatter": "${value}"}},
+                "series": [{"type": "line", "data": price_history}],
+                "grid": {
+                    "left": "50px",
+                    "right": "10px",
+                    "top": "10%",
+                    "bottom": "10%",
+                },
+                "animation": False,
+            },
+            theme={
+                "backgroundColor": "#ffffff",
+            },
+        )
+
+    dialog.open()
 
 
 async def update_specials():
@@ -214,7 +259,7 @@ async def update_specials():
     current_specials.refresh()
 
 
-schedule.every().tuesday.at("18:00").do(update_specials)
+schedule.every().wednesday.at("03:00").do(update_specials)
 ui.timer(60, schedule.run_pending)
 
 
@@ -227,5 +272,6 @@ if not os.path.exists("products.yaml"):
     open("products.yaml", "w+")
 
 app.on_startup(update_specials)
+ui.add_css("page.css", shared=True)
 
 ui.run(port=8888, title="Price Checker", favicon="🍎")

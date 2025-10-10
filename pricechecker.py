@@ -1,9 +1,9 @@
 import json
-import pickle
 import re
 import smtplib
 from urllib.parse import quote
 from email.mime.text import MIMEText
+from datetime import datetime
 
 import requests
 import yaml
@@ -32,31 +32,40 @@ class Product:
 
 
 class WooliesProduct(Product):
-    def __init__(self, json):
-        self.parse_json(json)
+    def __init__(self, response):
+        self.parse_json(response)
 
-    def parse_json(self, json):
-        self.name = json["DisplayName"]
-        self.price = json["Price"]
-        self.id = json["Stockcode"]
-        self.special = json["IsOnSpecial"]
-        self.image = json["LargeImageFile"]
+    def parse_json(self, response):
+        self.name = response["DisplayName"]
+        self.price = response["Price"]
+        self.id = response["Stockcode"]
+        self.special = response["IsOnSpecial"]
+        self.image = response["LargeImageFile"]
+
+        if self.special:
+            self.saving = (response["SavingsAmount"] / response["WasPrice"]) * 100
+        else:
+            self.saving = 0
 
 
 class ColesProduct(Product):
-    def __init__(self, json):
-        self.parse_json(json)
+    def __init__(self, response):
+        self.parse_json(response)
 
-    def parse_json(self, json):
-        self.name = f"{json['brand']} {json['name']} {json['size']}"
-        self.price = json["pricing"]["now"]
-        self.id = json["id"]
-        self.image = f"https://cdn.productimages.coles.com.au/productimages{json['imageUris'][0]['uri']}"
+    def parse_json(self, response):
+        self.name = f"{response['brand']} {response['name']} {response['size']}"
+        self.price = response["pricing"]["now"]
+        self.id = response["id"]
+        self.image = f"https://cdn.productimages.coles.com.au/productimages{response['imageUris'][0]['uri']}"
 
-        if json["pricing"]["was"] != 0:
+        if response["pricing"]["was"] != 0:
             self.special = True
+            self.saving = (
+                response["pricing"]["saveAmount"] / response["pricing"]["was"]
+            ) * 100
         else:
             self.special = False
+            self.saving = 0
 
 
 def search_woolies(query: str) -> list:
@@ -111,41 +120,68 @@ def send_email(subject, body, sender, recipients, password):
 
 
 def check_specials():
+    def after_next_wed(date_string: str) -> bool:
+        date = datetime.strptime(date_string, "%Y-%m-%d")
+        diff = (datetime.now() - date).days
+        days_to_next_wed = (2 - date.weekday() + 7) % 7
+        if days_to_next_wed == 0:
+            days_to_next_wed = 7
+
+        return diff >= days_to_next_wed
+
+    def update_price_history(data):
+        if not data["price_history"]:
+            data["price_history"] = [(today, data["price"])]
+        elif after_next_wed(data["price_history"][-1][0]):
+            if len(data["price_history"]) == 10:
+                data["price_history"] = data["price_history"][1:] + [
+                    (today, data["price"])
+                ]
+            else:
+                data["price_history"].append((today, data["price"]))
+
     with open("products.yaml", "r") as f:
-        product_ids = yaml.safe_load(f.read())
+        data = yaml.safe_load(f.read())
+
+    today = str(datetime.now().date())
 
     woolies_ids = [
-        str(v["woolies"]) for v in product_ids.values() if v["woolies"] is not None
+        str(v["woolies"]["id"]) for v in data.values() if v["woolies"]["id"] is not None
     ]
     coles_ids = [
-        str(v["coles"]) for v in product_ids.values() if v["coles"] is not None
+        str(v["coles"]["id"]) for v in data.values() if v["coles"]["id"] is not None
     ]
 
     products = get_woolies_products(woolies_ids)
-    woolies_specials = []
-    for product in products:
+    for name, product in zip(data, products):
+        woolies_data = data[name]["woolies"]
+        woolies_data["price"] = product["Price"]
+        woolies_data["on_special"] = product["IsOnSpecial"]
+
         if product["IsOnSpecial"]:
-            saving = (product["SavingsAmount"] / product["WasPrice"]) * 100
-            woolies_specials.append(
-                (
-                    f"{product['DisplayName']}",
-                    f"${product['Price']:.2f}",
-                    f"{saving:.0f}%",
-                )
-            )
+            woolies_data["saving"] = (
+                product["SavingsAmount"] / product["WasPrice"]
+            ) * 100
+            if woolies_data["saving"] > woolies_data["max_save"]:
+                woolies_data["max_save"] = woolies_data["saving"]
+
+        update_price_history(woolies_data)
 
     products = get_coles_products(coles_ids)
-    coles_specials = []
-    for product in products:
+    for name, product in zip(data, products):
+        coles_data = data[name]["coles"]
         pricing = product["pricing"]
+        coles_data["price"] = pricing["now"]
         if pricing["was"] != 0:
-            name = f"{product['brand']} {product['name']} {product['size']}"
-            saving = (pricing["saveAmount"] / pricing["was"]) * 100
-            coles_specials.append(
-                (f"{name}", f"${pricing['now']:.2f}", f"{saving:.0f}%")
-            )
+            coles_data["on_special"] = True
+            coles_data["saving"] = (pricing["saveAmount"] / pricing["was"]) * 100
+            if coles_data["saving"] > coles_data["max_save"]:
+                coles_data["max_save"] = coles_data["saving"]
+        else:
+            coles_data["on_special"] = False
+            coles_data["saving"] = 0
 
-    specials = {"woolies": woolies_specials, "coles": coles_specials}
+        update_price_history(coles_data)
 
-    with open("specials.pkl", "wb") as f:
-        pickle.dump(specials, f)
+    with open("products.yaml", "w") as f:
+        yaml.safe_dump(data, f)
