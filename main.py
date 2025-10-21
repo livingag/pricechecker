@@ -4,7 +4,8 @@ from functools import partial
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from nicegui import app, run, ui
+from nicegui import app, ui
+from sqladmin import Admin, ModelView
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -292,5 +293,26 @@ if not os.path.exists("products.yaml"):
 app.on_startup(update_specials)
 app.on_startup(start_scheduler)
 ui.add_css("page.css", shared=True)
+
+admin = Admin(app, async_engine)
+
+class ProductAdmin(ModelView, model=Product):
+    page_size = 50
+    column_list = [Product.id, Product.name]
+    column_searchable_list = [Product.name]
+
+class WooliesProductAdmin(ModelView, model=WooliesProduct):
+    page_size = 50
+    column_list = [WooliesProduct.id, WooliesProduct.name]
+    column_searchable_list = [WooliesProduct.name]
+
+class ColesProductAdmin(ModelView, model=ColesProduct):
+    page_size = 50
+    column_list = [ColesProduct.id, ColesProduct.name]
+    column_searchable_list = [ColesProduct.name]
+
+admin.add_view(ProductAdmin)
+admin.add_view(WooliesProductAdmin)
+admin.add_view(ColesProductAdmin)
 
 ui.run(port=8888, title="Price Checker", favicon="🍎")
