@@ -146,9 +146,13 @@ class WooliesProduct(StoreProduct, Base):
 
     def get_price(self):
         response = search_woolies(str(self.store_id))[0]
-        self.price = int(response["Price"] * 100)
+
+        if response["Price"] is not None:
+            self.price = int(response["Price"] * 100)
+        else:
+            self.price = int(response["WasPrice"] * 100)
+
         self.special = response["IsOnSpecial"]
-        print(self.special)
 
         if self.special:
             self.saving = int((response["SavingsAmount"] / response["WasPrice"]) * 100)
@@ -167,7 +171,12 @@ class ColesProduct(StoreProduct, Base):
 
     def parse_json(self, response):
         self.name = f"{response['brand']} {response['name']} {response['size']}"
-        self.price = int(response["pricing"]["now"] * 100)
+
+        if response["pricing"]["now"] is not None:
+            self.price = int(response["pricing"]["now"] * 100)
+        else:
+            self.price = int(response["pricing"]["was"] * 100)
+
         self.price_history = str(self.price)
         self.last_price = datetime.date.today()
         self.store_id = response["id"]
@@ -186,7 +195,12 @@ class ColesProduct(StoreProduct, Base):
 
     def get_price(self):
         response = get_coles_products([str(self.store_id)])[0]
-        self.price = int(response["pricing"]["now"] * 100)
+
+        if response["pricing"]["now"] is not None:
+            self.price = int(response["pricing"]["now"] * 100)
+        else:
+            self.price = int(response["pricing"]["was"] * 100)
+
         if response["pricing"]["was"] != 0:
             self.special = True
             self.saving = int(
