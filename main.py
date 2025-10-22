@@ -276,7 +276,7 @@ async def update_specials():
 
 
 def start_scheduler():
-    tr = CronTrigger(day_of_week="tue", hour="3", minute="0")
+    tr = CronTrigger(day_of_week="wed", hour="3", minute="0")
     scheduler = AsyncIOScheduler()
     scheduler.add_job(update_specials, trigger=tr)
     scheduler.start()
