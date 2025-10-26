@@ -115,6 +115,7 @@ class StoreProduct:
             history = [int(x) for x in self.price_history.split(",")]
             history.append(self.price)
             self.price_history = ",".join([str(x) for x in history])
+            self.last_price = datetime.date.today()
 
 
 class WooliesProduct(StoreProduct, Base):
